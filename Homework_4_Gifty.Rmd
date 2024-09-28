@@ -1,0 +1,146 @@
+---
+title: "Homework 4"
+author: "Gifty Osei"
+date: "2024-09-27"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r writing,out.width = "50%", fig.cap = " Problem 1 - Problem 3",fig.show='hold', eval=FALSE}
+knitr::include_graphics("D:/WashU/First Year/Sem1/SDS5531_StatsComputing/Homework/New folder/Prob1a.pdf") 
+
+```
+
+
+```{r simulation_code, message=FALSE, warning=FALSE}
+# Set the seed for reproducibility
+set.seed(123)
+
+# Parameters
+n <- 100  # Sample size
+num_simulations <- 1000  # Number of simulations
+alpha <- 0.1  # Nominal family-wise error rate
+
+# Initialize vectors to store results
+reject_F_test <- logical(num_simulations)
+reject_pairwise <- logical(num_simulations)
+
+# Generate fixed x-values from standard normal distribution
+x <- matrix(rnorm(n * 4), n, 4)  # n x 4 matrix of standard normal random variables
+
+# Function to perform the F-test
+perform_F_test <- function(y, x) {
+  # Fit the full model
+  full_model <- lm(y ~ x)
+  
+  # Fit the reduced model under H0: beta1 = beta2 = beta3 = beta4
+  reduced_model <- lm(y ~ rowMeans(x))
+  
+  # Calculate the F-statistic
+  F_stat <- anova(reduced_model, full_model)$`F`[2]
+  
+  # p-value of the F-test
+  p_value <- anova(reduced_model, full_model)$`Pr(>F)`[2]
+  
+  return(p_value < alpha)
+}
+
+# Function to perform pairwise t-tests with Bonferroni adjustment
+perform_pairwise_tests <- function(y, x) {
+  # Fit the full model
+  model <- lm(y ~ x)
+  
+  # Extract estimated coefficients and covariance matrix
+  beta_hat <- coef(model)[-1]  # Exclude intercept
+  cov_matrix <- vcov(model)[-1, -1]  # Exclude intercept
+  
+  # Calculate variances for pairwise differences
+  var_diff_12 <- cov_matrix[1, 1] + cov_matrix[2, 2] - 2 * cov_matrix[1, 2]
+  var_diff_23 <- cov_matrix[2, 2] + cov_matrix[3, 3] - 2 * cov_matrix[2, 3]
+  var_diff_34 <- cov_matrix[3, 3] + cov_matrix[4, 4] - 2 * cov_matrix[3, 4]
+  
+  # Calculate t-statistics for each pairwise comparison
+  t_12 <- (beta_hat[1] - beta_hat[2]) / sqrt(var_diff_12)
+  t_23 <- (beta_hat[2] - beta_hat[3]) / sqrt(var_diff_23)
+  t_34 <- (beta_hat[3] - beta_hat[4]) / sqrt(var_diff_34)
+  
+  # Calculate p-values for each t-test
+  p_values <- 2 * pt(-abs(c(t_12, t_23, t_34)), df = n - 5)
+  
+  # Apply Bonferroni correction
+  reject <- any(p_values < alpha / 3)
+  
+  return(reject)
+}
+
+# Simulation
+for (i in 1:num_simulations) {
+  # Generate y-values based on the model
+  epsilon <- rnorm(n, 0, 1)
+  y <- 1 + x[, 1] + x[, 2] + x[, 3] + x[, 4] + epsilon
+  
+  # Perform the F-test
+  reject_F_test[i] <- perform_F_test(y, x)
+  
+  # Perform pairwise t-tests with Bonferroni adjustment
+  reject_pairwise[i] <- perform_pairwise_tests(y, x)
+}
+
+# Calculate the empirical family-wise error rate (FWER)
+FWER_F_test <- mean(reject_F_test)
+FWER_pairwise <- mean(reject_pairwise)
+
+# Display results
+cat("FWER for F-test:", FWER_F_test, "\n")
+cat("FWER for pairwise comparisons with Bonferroni adjustment:", FWER_pairwise, "\n")
+
+
+```
+
+
+
+```{r}
+set.seed(123)
+n=100 # sample size
+nsim = 1000 # number of simulations
+# generate the predictors
+x1 = rnorm(n)
+x2 = rnorm(n)
+x3 = rnorm(n)
+x4 = rnorm(n)
+FWER <- 0.1 # nominal FWER
+results = matrix(0,nrow = nsim,ncol=2)
+colnames(results) = c("Simultaneous","Bonferroni")
+# define the contrasts
+c1 = c(0, 1, -1, 0, 0)
+c2 = c(0, 0, 1, -1, 0)
+c3 = c(0, 0, 0, 1, -1)
+# simulation
+for (i in 1:nsim){
+y = 1 + x1 + x2 + x3 + x4 + rnorm(n)
+fullmodel = lm(y~x1+x2+x3+x4)
+rmodel = lm(y~I(x1+x2+x3+x4))
+# 1. Simultaneous testing
+pv <- anova(rmodel, fullmodel)$Pr[2]
+if (pv<FWER) results[i,1] = 1
+# 2. Bonferroni adjustment
+betahat = coef(fullmodel)
+s = summary(fullmodel)$sigma
+Sigma = summary(fullmodel)$cov.unscaled # (X’X)^{-1}
+t1 = abs(t(c1)%*%betahat)/(s*sqrt(t(c1)%*%Sigma%*%c1))
+pval1 = 2*(1-pt(t1,df=n-5))
+t2 = abs(t(c2)%*%betahat)/(s*sqrt(t(c2)%*%Sigma%*%c2))
+pval2 = 2*(1-pt(t2,df=n-5))
+t3 = abs(t(c3)%*%betahat)/(s*sqrt(t(c3)%*%Sigma%*%c3))
+pval3 = 2*(1-pt(t3,df=n-5))
+if (any(c(pval1,pval2,pval3)<(FWER/3))) results[i,2]=1
+}
+# empirical FWER
+apply(results,2,mean)
+```
+
+
+
