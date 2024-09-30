@@ -7,6 +7,7 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
 ```
 
 ```{r writing,out.width = "50%", fig.cap = " Problem 1 - Problem 3",fig.show='hold', eval=FALSE}
@@ -15,7 +16,7 @@ knitr::include_graphics("D:/WashU/First Year/Sem1/SDS5531_StatsComputing/Homewor
 ```
 
 
-```{r simulation_code, message=FALSE, warning=FALSE}
+```{r code, message=FALSE, warning=FALSE, eval=FALSE, include=FALSE}
 # Set the seed for reproducibility
 set.seed(123)
 
@@ -102,7 +103,7 @@ cat("FWER for pairwise comparisons with Bonferroni adjustment:", FWER_pairwise, 
 
 
 
-```{r}
+```{r simulation_code, warning=FALSE, message=FALSE}
 set.seed(123)
 n=100 # sample size
 nsim = 1000 # number of simulations
@@ -111,36 +112,70 @@ x1 = rnorm(n)
 x2 = rnorm(n)
 x3 = rnorm(n)
 x4 = rnorm(n)
-FWER <- 0.1 # nominal FWER
+
+
+
+nom_FWER <- 0.1 # nominal FWER
+
+
 results = matrix(0,nrow = nsim,ncol=2)
+
 colnames(results) = c("Simultaneous","Bonferroni")
+
+
 # define the contrasts
 c1 = c(0, 1, -1, 0, 0)
 c2 = c(0, 0, 1, -1, 0)
 c3 = c(0, 0, 0, 1, -1)
+
+
 # simulation
+
+
 for (i in 1:nsim){
 y = 1 + x1 + x2 + x3 + x4 + rnorm(n)
+
 fullmodel = lm(y~x1+x2+x3+x4)
+
 rmodel = lm(y~I(x1+x2+x3+x4))
+
 # 1. Simultaneous testing
+
 pv <- anova(rmodel, fullmodel)$Pr[2]
-if (pv<FWER) results[i,1] = 1
+
+if (pv < nom_FWER) results[i,1] = 1
+
+
 # 2. Bonferroni adjustment
-betahat = coef(fullmodel)
-s = summary(fullmodel)$sigma
-Sigma = summary(fullmodel)$cov.unscaled # (X’X)^{-1}
-t1 = abs(t(c1)%*%betahat)/(s*sqrt(t(c1)%*%Sigma%*%c1))
-pval1 = 2*(1-pt(t1,df=n-5))
-t2 = abs(t(c2)%*%betahat)/(s*sqrt(t(c2)%*%Sigma%*%c2))
-pval2 = 2*(1-pt(t2,df=n-5))
-t3 = abs(t(c3)%*%betahat)/(s*sqrt(t(c3)%*%Sigma%*%c3))
-pval3 = 2*(1-pt(t3,df=n-5))
+
+betahat = coef(fullmodel) ## Call coefficients from model
+
+
+s = summary(fullmodel)$sigma  ## extract sigma value from model
+
+Sigma = summary(fullmodel)$cov.unscaled # inverse
+
+t1 = abs(t(c1)%*%betahat)/(s*sqrt(t(c1)%*%Sigma%*%c1)) #t1
+
+pval1 = 2*(1-pt(t1,df=n-5)) #p_value for 1
+
+t2 = abs(t(c2)%*%betahat)/(s*sqrt(t(c2)%*%Sigma%*%c2)) # t2
+
+pval2 = 2*(1-pt(t2,df=n-5)) #p_value for 2
+
+t3 = abs(t(c3)%*%betahat)/(s*sqrt(t(c3)%*%Sigma%*%c3))  #t3
+
+pval3 = 2*(1-pt(t3,df=n-5)) # p_value for 3
+
 if (any(c(pval1,pval2,pval3)<(FWER/3))) results[i,2]=1
 }
 # empirical FWER
-apply(results,2,mean)
+result_data <- apply(results,2,mean)
+
+## Results table
+
+kable(result_data, caption = "3 Pairwise Comparison")
 ```
 
 
-
+We can see that Bonferroni is closer to the true value.
