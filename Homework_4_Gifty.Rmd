@@ -1,5 +1,5 @@
 ---
-title: "Homework 4"
+title: "HW4 Question 3C"
 author: "Gifty Osei"
 date: "2024-09-27"
 output: pdf_document
@@ -10,100 +10,107 @@ knitr::opts_chunk$set(echo = TRUE)
 library(kableExtra)
 ```
 
-```{r writing,out.width = "50%", fig.cap = " Problem 1 - Problem 3",fig.show='hold', eval=FALSE}
+```{r writing,out.width = "50%", fig.cap = " Problem 1 - Problem 3",fig.show='hold', eval=FALSE, include=FALSE}
 knitr::include_graphics("D:/WashU/First Year/Sem1/SDS5531_StatsComputing/Homework/New folder/Prob1a.pdf") 
 
 ```
 
 
-```{r code, message=FALSE, warning=FALSE, eval=FALSE, include=FALSE}
-# Set the seed for reproducibility
+## Question 3c:
+
+```{r code, message=FALSE, warning=FALSE}
+# Set Seed
 set.seed(123)
 
 # Parameters
 n <- 100  # Sample size
-num_simulations <- 1000  # Number of simulations
-alpha <- 0.1  # Nominal family-wise error rate
+num_sim <- 1000  # Number of simulations
+fwer_alpha <- 0.1  # Nominal family-wise error rate
 
-# Initialize vectors to store results
-reject_F_test <- logical(num_simulations)
-reject_pairwise <- logical(num_simulations)
+# Storage vector
+reject_F_test <- logical(num_sim)
+reject_pairwise <- logical(num_sim)
 
-# Generate fixed x-values from standard normal distribution
-x <- matrix(rnorm(n * 4), n, 4)  # n x 4 matrix of standard normal random variables
+# fixed x-values from N(0,1)
+x <- matrix(rnorm(n * 4), n, 4)  
 
-# Function to perform the F-test
-perform_F_test <- function(y, x) {
+# Function for the F-test
+F_test_function <- function(y, x) {
   # Fit the full model
   full_model <- lm(y ~ x)
   
   # Fit the reduced model under H0: beta1 = beta2 = beta3 = beta4
   reduced_model <- lm(y ~ rowMeans(x))
   
-  # Calculate the F-statistic
-  F_stat <- anova(reduced_model, full_model)$`F`[2]
+  #  F-statistic
+  F_stat <- anova(reduced_model, full_model, test = "F")$`F`[2]
   
   # p-value of the F-test
-  p_value <- anova(reduced_model, full_model)$`Pr(>F)`[2]
+  p_value <- anova(reduced_model, full_model, test = "F")$`Pr(>F)`[2]
   
-  return(p_value < alpha)
+  return(p_value < fwer_alpha) ## return
 }
 
-# Function to perform pairwise t-tests with Bonferroni adjustment
-perform_pairwise_tests <- function(y, x) {
-  # Fit the full model
+# Function for pairwise t-tests with adjustment
+pairwise_tests_function <- function(y, x) {
+  #  full model
   model <- lm(y ~ x)
   
-  # Extract estimated coefficients and covariance matrix
-  beta_hat <- coef(model)[-1]  # Exclude intercept
-  cov_matrix <- vcov(model)[-1, -1]  # Exclude intercept
+  # Extract estimated coefficients and covariance 
+  beta_hat <- coef(model)[-1]  # no intercept
+  cov_matrix <- vcov(model)[-1, -1]  # no intercept
   
-  # Calculate variances for pairwise differences
+  # variances for pairwise differences
   var_diff_12 <- cov_matrix[1, 1] + cov_matrix[2, 2] - 2 * cov_matrix[1, 2]
   var_diff_23 <- cov_matrix[2, 2] + cov_matrix[3, 3] - 2 * cov_matrix[2, 3]
   var_diff_34 <- cov_matrix[3, 3] + cov_matrix[4, 4] - 2 * cov_matrix[3, 4]
   
-  # Calculate t-statistics for each pairwise comparison
+  #  t-statistics for each pairwise test
   t_12 <- (beta_hat[1] - beta_hat[2]) / sqrt(var_diff_12)
   t_23 <- (beta_hat[2] - beta_hat[3]) / sqrt(var_diff_23)
   t_34 <- (beta_hat[3] - beta_hat[4]) / sqrt(var_diff_34)
   
-  # Calculate p-values for each t-test
+  # p-values - each t-test
   p_values <- 2 * pt(-abs(c(t_12, t_23, t_34)), df = n - 5)
   
-  # Apply Bonferroni correction
-  reject <- any(p_values < alpha / 3)
+  # Apply Bonferroni and compare
+  reject <- any(p_values < fwer_alpha / 3)
   
   return(reject)
 }
 
 # Simulation
-for (i in 1:num_simulations) {
+for (i in 1:num_sim) {
   # Generate y-values based on the model
-  epsilon <- rnorm(n, 0, 1)
+  epsilon <- rnorm(n)
   y <- 1 + x[, 1] + x[, 2] + x[, 3] + x[, 4] + epsilon
   
-  # Perform the F-test
-  reject_F_test[i] <- perform_F_test(y, x)
+  #  F-test
+  reject_F_test[i] <- F_test_function(y, x)
   
-  # Perform pairwise t-tests with Bonferroni adjustment
-  reject_pairwise[i] <- perform_pairwise_tests(y, x)
+  #  pairwise t-tests with Bonferroni adjustment
+  reject_pairwise[i] <- pairwise_tests_function(y, x)
 }
 
-# Calculate the empirical family-wise error rate (FWER)
+# empirical family-wise error rate (FWER)
 FWER_F_test <- mean(reject_F_test)
 FWER_pairwise <- mean(reject_pairwise)
 
-# Display results
-cat("FWER for F-test:", FWER_F_test, "\n")
-cat("FWER for pairwise comparisons with Bonferroni adjustment:", FWER_pairwise, "\n")
 
+## Result data
+result_data <- data.frame("Simultaneous" = FWER_F_test,
+                          "Bonferroni" = FWER_pairwise,
+                          "Nominal FWER" = fwer_alpha)
+# Display results
+
+kable(result_data, caption = "Comparison between the 2 Methods to FWER")
 
 ```
 
+\begin{center}We can see from Table 1 that, simultaneous test gives a value that is closer to the true nominal family-wise error rate value.
+\end{center}
 
-
-```{r simulation_code, warning=FALSE, message=FALSE}
+```{r simulation_code, warning=FALSE, message=FALSE, echo=FALSE, include=FALSE, eval=FALSE}
 set.seed(123)
 n=100 # sample size
 nsim = 1000 # number of simulations
@@ -167,7 +174,7 @@ t3 = abs(t(c3)%*%betahat)/(s*sqrt(t(c3)%*%Sigma%*%c3))  #t3
 
 pval3 = 2*(1-pt(t3,df=n-5)) # p_value for 3
 
-if (any(c(pval1,pval2,pval3)<(FWER/3))) results[i,2]=1
+if (any(c(pval1,pval2,pval3)<(nom_FWER /3))) results[i,2]=1
 }
 # empirical FWER
 result_data <- apply(results,2,mean)
@@ -178,4 +185,4 @@ kable(result_data, caption = "3 Pairwise Comparison")
 ```
 
 
-We can see that Bonferroni is closer to the true value.
+
