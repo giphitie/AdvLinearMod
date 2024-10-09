@@ -1,0 +1,139 @@
+---
+title: "Multiple Linear Regression"
+author: "Gifty Osei"
+date: "2024-10-03"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Example
+
+```{r}
+library(faraway)
+data(savings)
+names(savings)
+```
+
+## Partial F-Test
+
+```{r}
+# Partial F-test
+anova(reducedmodel, fullmodel, test="F")
+
+
+gr = lm(sr~I(pop15+pop75)+dpi+ddpi,data=savings)
+summary(gr)
+
+anova(gr,fullmodel)
+```
+
+
+
+## Confidence Region
+
+```{r}
+#Simulation: coverage probability of joint confidence region
+# of linear regression coefficients
+alpha=0.05
+# true value
+beta0=1;beta1=1.5 # regression coefficients
+beta.true=c(beta0,beta1)
+sigma=1 # standard deviation of the random error
+n=100 # sample size
+# assume the predictor variable takes values evenly acorss (0,1)
+x=seq(0,1,length=n)
+mat=matrix(c(n,sum(x),sum(x),sum(x*x)),ncol=2)
+cover1=cover2=0 # counter
+
+
+
+nsim=10000 # number of simulations
+for (i in 1:nsim){
+epsilon=rnorm(n,mean=0,sd=sigma)
+y=beta0+beta1*x+epsilon
+fit=summary(lm(y~x))
+# rectangular region region
+region1=cbind(fit$coef[,1]-qt(1-alpha/2,df=n-2)*fit$coef[,2],
+fit$coef[,1]+qt(1-alpha/2,df=n-2)*fit$coef[,2])
+colnames(region1)=c("lower","upper")
+flag0 = (beta0>region1[1,1])&(beta0<region1[1,2])
+flag1 = (beta1>region1[2,1])&(beta1<region1[2,2])
+flag=flag0&flag1
+if (flag==T) cover1=cover1+1
+# elliptical confidence region
+delta_beta = fit$coef[,1]-beta.true
+if (delta_beta%*%mat%*%matrix(delta_beta,ncol=1)/(2*fit$sigma^2)
+<qf(1-alpha,df1=2,df2=n-2))
+cover2=cover2+1
+}
+c(cover1,cover2)/nsim
+```
+
+
+## Predition Interval
+
+```{r}
+n=20;y = rnorm(n); x=rnorm(n)
+x0=10
+fit = lm(y~x)
+new = data.frame(x=x0)
+predict(fit, new, interval="prediction",level=0.9)
+## fit lwr upr
+## 1 0.4770456 -5.690395 6.644486
+predict(fit, new, interval="confidence",level=0.9)
+```
+
+## Old Faithful Example
+
+```{r}
+attach(faithful) # attach the data frame
+eruption.lm = lm(eruptions ~ waiting)
+newdata = data.frame(waiting=80)
+# plot the band by connecting the pointwise prediction intervals
+x = seq(40,100,length=100)
+newdata = data.frame(waiting=x)
+pi=predict(eruption.lm, newdata, interval="predict")
+ci=predict(eruption.lm, newdata, interval="confidence")
+plot(x,pi[,3],type="n",ylim=c(0,7),
+xlab="waiting time (min)",
+ylab="eruption time (min)")
+abline(eruption.lm)
+# prediction band
+lines(x,pi[,2],lty=2);lines(x,pi[,3],lty=2)
+# confidence band
+lines(x,ci[,2],lty=2,col="red");lines(x,ci[,3],lty=2,col="red")
+points(waiting,eruptions)
+detach(faithful)
+```
+
+
+## Interpretation Example
+
+```{r}
+g = lm(sr~pop15+pop75+dpi+ddpi,data=savings)
+g2 = lm(sr~pop75+dpi+ddpi,data=savings)
+g3 = lm(sr~pop75+ddpi,data=savings)
+g4 = lm(sr~pop75,data=savings)
+
+summary(g,cor="T")
+summary(g2,cor="T")
+summary(g3,cor="T")
+summary(g4,cor="T")
+```
+
+
+## Orthogonality
+
+```{r}
+library(faraway)
+data(odor)
+head(odor)
+
+summary(lm(odor~temp+gas+pack,data=odor))
+
+summary(lm(odor~gas+pack,data=odor))
+```
+
