@@ -1,0 +1,177 @@
+---
+title: "Regression_Diagnostics"
+author: "Gifty Osei"
+date: "2024-10-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Checking Linearity
+
+```{r}
+library(MASS)
+simplemod<-lm(brain~body,data=mammals)
+
+summary(simplemod)
+plot(brain~body,data=mammals)
+abline(simplemod)
+```
+
+
+
+```{r}
+par(mfrow=c(2,3))
+plot(simplemod,which=1:6)
+```
+
+```{r}
+plot(simplemod$fitted, simplemod$resid,
+xlab="Fitted values",ylab="Residuals",
+main="Residuals vs Fitted")
+lines(lowess(simplemod$fitted, simplemod$resid), col=2)
+```
+
+```{r}
+qqnorm(simplemod$resid)
+# qqline adds a line to a normal quantile-quantile plot
+# which passes through the first and third quartiles.
+qqline(simplemod$resid)
+```
+
+
+```{r}
+transmod<-lm(log(brain)~log(body),data=mammals)
+par(mfrow=c(2,3))
+plot(transmod,which=1:6)
+```
+
+```{r}
+library(MASS)
+boxcox(brain ~ body, data = mammals)
+
+b1 =boxcox(brain ~ body, data = mammals,plotit = F)
+lambda1 = b1$x[which.max(b1$y)]
+b2 = boxcox(brain ~ 1, data = mammals,plotit = F) # without regression
+lambda2 = b2$x[which.max(b2$y)]
+c(lambda1,lambda2)
+```
+## Tree
+
+```{r}
+fit0=lm(Volume ~ log(Height) + log(Girth), data = trees)
+summary(fit0)
+
+par(mfrow=c(2,2))
+plot(fit0)
+
+## box-cox
+boxcox(Volume~log(Height) + log(Girth), data = trees,
+lambda = seq(-0.25, 0.25, length = 10))
+
+fit1=lm(log(Volume) ~ log(Height) + log(Girth), data = trees)
+summary(fit1)
+
+par(mfrow=c(2,2))
+plot(fit1)
+```
+
+
+## Transforming Preditors :
+
+### Broken Stick
+```{r}
+library(faraway)
+plot(sr~pop15,data=savings,xlab="Population under 15",
+ylab="Saving Rate")
+abline(v=35,lty=5)
+
+g1 = lm(sr~pop15, data=savings, subset=(pop15<35))
+g2 = lm(sr~pop15, data=savings, subset=(pop15>35))
+
+lhs = function(x) ifelse(x<35,35-x,0)
+rhs = function(x) ifelse(x<35,0,x-35)
+
+gb = lm(sr~lhs(pop15)+rhs(pop15),data=savings)
+x = seq(20,48,by=1)
+plot(sr~pop15,data=savings,xlab="Population under 15",
+ylab="Saving Rate")
+abline(v=35,lty=5)
+py = gb$coef[1]+gb$coef[2]*lhs(x)+gb$coef[3]*rhs(x)
+lines(x,py,lty=2)
+```
+
+
+### Polynomial 
+```{r}
+library(faraway)
+summary(lm(sr~ddpi,data=savings))
+
+summary(lm(sr~ddpi+I(ddpi^2),data=savings))
+
+summary(lm(sr~ddpi+I(ddpi^2)+I(ddpi^3),data=savings))
+
+## do together
+g = lm(sr~poly(ddpi,4),data=savings)
+summary(g)
+
+## weonly need 2 degrees 
+g = lm(sr~polym(pop15,ddpi,degree=2),data=savings)
+```
+
+### Spline:
+
+```{r}
+# simulate a data set
+funky = function(x) sin(2*pi*x^3)^3
+x = seq(0,1,by=0.01)
+y = funky(x)+0.1*rnorm(101)
+par(mfrow=c(1,2))
+matplot(x,cbind(y,funky(x)),type="pl",ylab="y",pch=18,lty=1)
+title("true model")
+g4 = lm(y~poly(x,4)); g12 = lm(y~poly(x,12))
+matplot(x,cbind(y,g4$fit,g12$fit),type="pll",ylab="y",pch=18,lty=1:2)
+title("polynomial fit")
+
+
+
+library(splines)
+# specify the knots
+knots = c(0,0,0,0,0.2,0.4,0.5,0.6,0.7,0.8,0.85,0.9,1,1,1,1)
+bx = splineDesign(knots,x) # create basis functions
+gs = lm(y~bx)
+par(mfrow=c(1,2))
+matplot(x,bx,type="l",ylab="Basis function")
+title("basis functions")
+matplot(x,cbind(y,gs$fit),type="pl",ylab="y",pch=18,lty=1)
+title("cubic spline fit")
+```
+
+
+
+
+# Heteroskedasticity
+
+```{r}
+set.seed(1000)
+x <- c(1:100/10)
+y <- NULL
+for (i in 1:length(x)){
+tmp <- 1+x[i]+rnorm(1,0,x[i]/2)
+y <- c(y,tmp)
+}
+
+plot(x,y,main="Simulated data with the true regression line",pch=19)
+abline(1,1,lwd=2,col=1,lty=1)
+
+fit1 <- lm(y~x); summary(fit1)
+
+par(mfrow=c(2,3))
+plot(fit1,which=1:6)
+
+fit2 <- lm(y~x,weights=(2/x)^2)
+```
+
