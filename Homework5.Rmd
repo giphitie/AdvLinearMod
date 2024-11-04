@@ -1,0 +1,37 @@
+---
+title: "Question 1"
+author: "Gifty Osei"
+date: "2024-10-30"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Marginal Plot
+
+```{r}
+dat = data.frame(matrix(c(10, 2, 1,17, 3, 2,48, 4, 5,27, 1, 2,55, 5, 6,26, 6,
+4, 9, 7, 3,16, 8, 4),ncol=3,byrow=T))
+colnames(dat)=c("y","x1","x2")
+
+pander:: pander(dat)
+
+```
+Observations from $y = 8 - 5x_1 + 12x_2$
+
+```{r}
+## Marginal plot for x1
+
+plot(y~x1,data=dat, main = "Marginal Plot for Y and x_1", xlab = "X1", ylab = "Y")
+
+ plot(y~x2,data=dat,main = "Marginal Plot for Y and x_2", xlab = "X2", ylab = "Y")
+```
+
+
+We can see from the marginal plots of $Y \sim X_1$ and $Y \sim X_2$ are not very clear on the relationship between the variables. The plot for $Y \sim X_1$ does not really show a clear relationship but we see a not so clear weak linear relationship between $Y$ and $X_2$.
+
+
+
+

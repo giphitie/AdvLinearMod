@@ -1,0 +1,237 @@
+---
+title: "Question 2"
+author: "Gifty Osei"
+date: "2024-11-01"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 2b.
+
+In general, a nonlinear trend can look fairly linear when data contain noise. For example, the following code plots data generated from $y = f(x1, x2)$ = $x_1 ^2 + x_2^2 + \epsilon$, where $\epsilon \sim N(0,0.02^2)$.
+
+```{r, warning=FALSE, message=FALSE}
+set.seed(390)
+n <- 100
+# simulate 20 values from uniform(0,1)
+x1 = runif(n,1,20)
+x2= runif(n,1,20)
+
+y = x1^2+x2*x2+rnorm(20,sd=0.02)
+plot(y~x1, main = " Marginal plot of y vs x1", xlab = "x1", ylab = "y")
+plot(y~x2,main = " Marginal plot of y vs x2", xlab = "x2", ylab = "y")
+
+
+
+```
+ We can see clearly form the marginal plots showing a linear trend but the overall model that generated the y values is nonlinear in x. We can see from the joint marginal plot that the are jointly nonlinear.
+ 
+```{r, warning=FALSE, message=FALSE}
+library(plotly)
+plot_ly(x = ~x1, y = ~x2, z = ~y, type = "scatter3d", mode = "markers",
+        marker = list(size = 3)) %>%
+  layout(scene = list(xaxis = list(title = "x1"),
+                      yaxis = list(title = "x2"),
+                      zaxis = list(title = "y")))
+```
+ 
+
+
+## Question 2 
+
+### a
+
+```{r, warning=FALSE, message=FALSE}
+
+
+# simulate data
+n <- 100
+x <- runif(n, 1, 10)  
+beta_0 <- 3
+beta_1 <- 2
+sigma <- 3
+
+# Generate y values based on the original model
+epsilon <- rnorm(n, mean = 0, sd = sigma * x)
+y <- beta_0 + beta_1 * x + epsilon
+
+# transformations
+y_prime <- y / x
+x_prime <- 1 / x
+
+# Check the variance of y_prime
+var_y_prime <- var(y_prime)
+print(sqrt(var_y_prime))
+
+```
+We can see that variance of $y^{'}$ is very close to the initial $\sigma$
+
+### c
+
+This is equivalent to OLS estimate because using the weights on the original data is like doing a $\frac{y}{x}$ transformation. We can see from the coeffiecients that there is not much change.
+
+```{r, warning=FALSE, message=FALSE}
+#  wls model
+fit_wls <- lm(y ~ x, weights = 1 / x^2)
+
+# OLS model
+fit_ols_trans <- lm(y_prime ~ x_prime)
+
+# Compare the coefficients
+summary(fit_wls)$coefficients
+summary(fit_ols_trans)$coefficients
+
+```
+
+## Question 3
+
+```{r, warning=FALSE, message=FALSE}
+library(faraway)
+pander::pander(head(pipeline))
+
+```
+
+
+### a.
+Fitting a linear model by regressing Lab on Field as;
+
+```{r, warning=FALSE, message=FALSE}
+
+fit_lm <- lm( Lab ~ Field, data = pipeline)
+
+
+
+plot(fit_lm, which = 1)
+
+```
+
+We can see from the residual vs fitted plot that linearity assumption is checked but the residuals have a funnel like pattern. As x increases the variability increases.
+
+### b
+
+```{r, warning=FALSE, message=FALSE}
+
+i = order(pipeline$Field)
+npipe = pipeline[i,]
+ff = gl(12,9)[-108]
+meanfield = unlist(lapply(split(npipe$Field,ff),mean))
+varlab = unlist(lapply(split(npipe$Lab,ff),var))
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+
+# Remove last point
+meanfield <- meanfield[-length(meanfield)]
+varlab <- varlab[-length(varlab)]
+
+#  Log transform
+log_meanfield <- log(meanfield)
+log_varlab <- log(varlab)
+
+#  model
+var_model <- lm(log_varlab ~ log_meanfield)
+summary(var_model)
+
+# Extract coefficients for a0 and a1
+## take exp because of the log 
+a0 <- exp(coef(var_model)[1]) 
+
+## slope - a1
+a1 <- coef(var_model)[2]       
+
+#   WLS as the inverse 
+predicted_variance <- a0 * (pipeline$Field ^ a1)
+weights <- 1 / predicted_variance
+
+# Perform WLS regression of Lab on Field using the calculated weights
+wls_model <- lm(Lab ~ Field, data = pipeline, weights = weights)
+summary(wls_model)
+
+```
+
+```{r, warning=FALSE, message=FALSE}
+# Assuming the pipeline dataset is available with columns Field and Lab
+# Initial Scatter Plot
+plot(pipeline$Field, pipeline$Lab, main = "Original Plot of Lab vs Field", 
+     xlab = "Field", ylab = "Lab")
+
+# 1. Square Root Transformations
+# Square root of Lab vs. Field
+sqrt_lab_model <- lm(sqrt(Lab) ~ Field, data = pipeline)
+plot(pipeline$Field, sqrt(pipeline$Lab), main = "Square Root Transformation of Lab vs Field",
+     xlab = "Field", ylab = "sqrt(Lab)")
+abline(sqrt_lab_model, col = "blue")
+# Diagnostic plots for sqrt(Lab) vs Field
+par(mfrow = c(1, 2))
+plot(sqrt_lab_model$fitted.values, sqrt_lab_model$residuals, main = "Residuals vs Fitted (sqrt(Lab))")
+qqnorm(sqrt_lab_model$residuals, main = "QQ Plot of Residuals (sqrt(Lab))")
+qqline(sqrt_lab_model$residuals)
+
+# Square root of Field vs Lab
+sqrt_field_model <- lm(Lab ~ sqrt(Field), data = pipeline)
+plot(sqrt(pipeline$Field), pipeline$Lab, main = "Square Root Transformation of Field vs Lab",
+     xlab = "sqrt(Field)", ylab = "Lab")
+abline(sqrt_field_model, col = "blue")
+# Diagnostic plots for Lab vs sqrt(Field)
+par(mfrow = c(1, 2))
+plot(sqrt_field_model$fitted.values, sqrt_field_model$residuals, main = "Residuals vs Fitted (sqrt(Field))")
+qqnorm(sqrt_field_model$residuals, main = "QQ Plot of Residuals (sqrt(Field))")
+qqline(sqrt_field_model$residuals)
+
+# 2. Log Transformations
+# Log of Lab vs Field
+log_lab_model <- lm(log(Lab) ~ Field, data = pipeline)
+plot(pipeline$Field, log(pipeline$Lab), main = "Log Transformation of Lab vs Field",
+     xlab = "Field", ylab = "log(Lab)")
+abline(log_lab_model, col = "blue")
+# Diagnostic plots for log(Lab) vs Field
+par(mfrow = c(1, 2))
+plot(log_lab_model$fitted.values, log_lab_model$residuals, main = "Residuals vs Fitted (log(Lab))")
+qqnorm(log_lab_model$residuals, main = "QQ Plot of Residuals (log(Lab))")
+qqline(log_lab_model$residuals)
+
+# Log of Field vs Lab
+log_field_model <- lm(Lab ~ log(Field), data = pipeline)
+plot(log(pipeline$Field), pipeline$Lab, main = "Log Transformation of Field vs Lab",
+     xlab = "log(Field)", ylab = "Lab")
+abline(log_field_model, col = "blue")
+# Diagnostic plots for Lab vs log(Field)
+par(mfrow = c(1, 2))
+plot(log_field_model$fitted.values, log_field_model$residuals, main = "Residuals vs Fitted (log(Field))")
+qqnorm(log_field_model$residuals, main = "QQ Plot of Residuals (log(Field))")
+qqline(log_field_model$residuals)
+
+# 3. Inverse Transformations
+# Inverse of Lab vs Field
+inv_lab_model <- lm(I(1/Lab) ~ Field, data = pipeline)
+plot(pipeline$Field, 1/pipeline$Lab, main = "Inverse Transformation of Lab vs Field",
+     xlab = "Field", ylab = "1/Lab")
+abline(inv_lab_model, col = "blue")
+# Diagnostic plots for 1/Lab vs Field
+par(mfrow = c(1, 2))
+plot(inv_lab_model$fitted.values, inv_lab_model$residuals, main = "Residuals vs Fitted (1/Lab)")
+qqnorm(inv_lab_model$residuals, main = "QQ Plot of Residuals (1/Lab)")
+qqline(inv_lab_model$residuals)
+
+# Inverse of Field vs Lab
+inv_field_model <- lm(Lab ~ I(1/Field), data = pipeline)
+plot(1/pipeline$Field, pipeline$Lab, main = "Inverse Transformation of Field vs Lab",
+     xlab = "1/Field", ylab = "Lab")
+abline(inv_field_model, col = "blue")
+# Diagnostic plots for Lab vs 1/Field
+par(mfrow = c(1, 2))
+plot(inv_field_model$fitted.values, inv_field_model$residuals, main = "Residuals vs Fitted (1/Field)")
+qqnorm(inv_field_model$residuals, main = "QQ Plot of Residuals (1/Field)")
+qqline(inv_field_model$residuals)
+
+# Reset plotting layout
+par(mfrow = c(1, 1))
+
+```
+
