@@ -1,17 +1,20 @@
 ---
-title: "Question 2"
+title: "Question 1"
 author: "Gifty Osei"
 date: "2024-11-01"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
+library(broom)
 ```
 
-## 2b.
+## 1b.
 
 In general, a nonlinear trend can look fairly linear when data contain noise. For example, the following code plots data generated from $y = f(x1, x2)$ = $x_1 ^2 + x_2^2 + \epsilon$, where $\epsilon \sim N(0,0.02^2)$.
 
@@ -29,9 +32,11 @@ plot(y~x2,main = " Marginal plot of y vs x2", xlab = "x2", ylab = "y")
 
 
 ```
- We can see clearly form the marginal plots showing a linear trend but the overall model that generated the y values is nonlinear in x. We can see from the joint marginal plot that the are jointly nonlinear.
+
+
+ We can see clearly form the marginal plots showing a linear trend but the overall model that generated the y values is nonlinear in x. We can see that from the joint marginal plot that the are jointly nonlinear. We can see that the joint marginal plot shows and captured the quadratic pattern of the form of $Y$
  
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
 library(plotly)
 plot_ly(x = ~x1, y = ~x2, z = ~y, type = "scatter3d", mode = "markers",
         marker = list(size = 3)) %>%
@@ -41,10 +46,11 @@ plot_ly(x = ~x1, y = ~x2, z = ~y, type = "scatter3d", mode = "markers",
 ```
  
 
+\newpage
 
 ## Question 2 
 
-### a
+### 2a
 
 ```{r, warning=FALSE, message=FALSE}
 
@@ -69,11 +75,12 @@ var_y_prime <- var(y_prime)
 print(sqrt(var_y_prime))
 
 ```
+
 We can see that variance of $y^{'}$ is very close to the initial $\sigma$
 
-### c
+### 2c
 
-This is equivalent to OLS estimate because using the weights on the original data is like doing a $\frac{y}{x}$ transformation. We can see from the coeffiecients that there is not much change.
+This is equivalent to OLS estimate because using the weights on the original data is like doing a $\frac{y}{x}$ transformation from part a. We can see from the coefficients that there is not much change although, intercept from OLS is now the slope for WLS and slope now intercept.
 
 ```{r, warning=FALSE, message=FALSE}
 #  wls model
@@ -97,7 +104,8 @@ pander::pander(head(pipeline))
 ```
 
 
-### a.
+### 3a.
+
 Fitting a linear model by regressing Lab on Field as;
 
 ```{r, warning=FALSE, message=FALSE}
@@ -112,7 +120,7 @@ plot(fit_lm, which = 1)
 
 We can see from the residual vs fitted plot that linearity assumption is checked but the residuals have a funnel like pattern. As x increases the variability increases.
 
-### b
+### 3b
 
 ```{r, warning=FALSE, message=FALSE}
 
@@ -136,7 +144,8 @@ log_varlab <- log(varlab)
 
 #  model
 var_model <- lm(log_varlab ~ log_meanfield)
-summary(var_model)
+tidy_var <- tidy(var_model)
+kable(tidy_var, caption = "Log Transform Estimates")
 
 # Extract coefficients for a0 and a1
 ## take exp because of the log 
@@ -151,87 +160,152 @@ weights <- 1 / predicted_variance
 
 # Perform WLS regression of Lab on Field using the calculated weights
 wls_model <- lm(Lab ~ Field, data = pipeline, weights = weights)
-summary(wls_model)
+tidy_wls <- tidy(wls_model)
+kable(tidy_wls, caption = "Calculated Weights")
 
 ```
 
-```{r, warning=FALSE, message=FALSE}
-# Assuming the pipeline dataset is available with columns Field and Lab
-# Initial Scatter Plot
+
+## 3c
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE, include=FALSE}
+
+# Original Plot
 plot(pipeline$Field, pipeline$Lab, main = "Original Plot of Lab vs Field", 
      xlab = "Field", ylab = "Lab")
 
-# 1. Square Root Transformations
-# Square root of Lab vs. Field
-sqrt_lab_model <- lm(sqrt(Lab) ~ Field, data = pipeline)
-plot(pipeline$Field, sqrt(pipeline$Lab), main = "Square Root Transformation of Lab vs Field",
-     xlab = "Field", ylab = "sqrt(Lab)")
+# Square Root Transformations
+
+sqrt_lab_model <- lm(sqrt(Lab) ~ Field, data = pipeline) #fit model
+
+
+plot(pipeline$Field, sqrt(pipeline$Lab), main = "Square Root Transformation of Lab vs Field",  xlab = "Field", ylab = "sqrt(Lab)")
 abline(sqrt_lab_model, col = "blue")
-# Diagnostic plots for sqrt(Lab) vs Field
-par(mfrow = c(1, 2))
-plot(sqrt_lab_model$fitted.values, sqrt_lab_model$residuals, main = "Residuals vs Fitted (sqrt(Lab))")
-qqnorm(sqrt_lab_model$residuals, main = "QQ Plot of Residuals (sqrt(Lab))")
-qqline(sqrt_lab_model$residuals)
+
 
 # Square root of Field vs Lab
-sqrt_field_model <- lm(Lab ~ sqrt(Field), data = pipeline)
-plot(sqrt(pipeline$Field), pipeline$Lab, main = "Square Root Transformation of Field vs Lab",
-     xlab = "sqrt(Field)", ylab = "Lab")
-abline(sqrt_field_model, col = "blue")
-# Diagnostic plots for Lab vs sqrt(Field)
-par(mfrow = c(1, 2))
-plot(sqrt_field_model$fitted.values, sqrt_field_model$residuals, main = "Residuals vs Fitted (sqrt(Field))")
-qqnorm(sqrt_field_model$residuals, main = "QQ Plot of Residuals (sqrt(Field))")
-qqline(sqrt_field_model$residuals)
+sqrt_field_model <- lm(Lab ~ sqrt(Field), data = pipeline) # fit model
 
-# 2. Log Transformations
-# Log of Lab vs Field
-log_lab_model <- lm(log(Lab) ~ Field, data = pipeline)
+plot(sqrt(pipeline$Field), pipeline$Lab, main = "Square Root Transformation of Field vs Lab", xlab = "sqrt(Field)", ylab = "Lab")
+abline(sqrt_field_model, col = "blue")
+
+
+
+# Log Transformations
+
+log_lab_model <- lm(log(Lab) ~ Field, data = pipeline) #fit model
+
 plot(pipeline$Field, log(pipeline$Lab), main = "Log Transformation of Lab vs Field",
      xlab = "Field", ylab = "log(Lab)")
 abline(log_lab_model, col = "blue")
-# Diagnostic plots for log(Lab) vs Field
-par(mfrow = c(1, 2))
-plot(log_lab_model$fitted.values, log_lab_model$residuals, main = "Residuals vs Fitted (log(Lab))")
-qqnorm(log_lab_model$residuals, main = "QQ Plot of Residuals (log(Lab))")
-qqline(log_lab_model$residuals)
+
+
+
+
 
 # Log of Field vs Lab
-log_field_model <- lm(Lab ~ log(Field), data = pipeline)
+log_field_model <- lm(Lab ~ log(Field), data = pipeline) #fit model
+
 plot(log(pipeline$Field), pipeline$Lab, main = "Log Transformation of Field vs Lab",
      xlab = "log(Field)", ylab = "Lab")
 abline(log_field_model, col = "blue")
-# Diagnostic plots for Lab vs log(Field)
-par(mfrow = c(1, 2))
-plot(log_field_model$fitted.values, log_field_model$residuals, main = "Residuals vs Fitted (log(Field))")
-qqnorm(log_field_model$residuals, main = "QQ Plot of Residuals (log(Field))")
-qqline(log_field_model$residuals)
+
+
+
 
 # 3. Inverse Transformations
-# Inverse of Lab vs Field
-inv_lab_model <- lm(I(1/Lab) ~ Field, data = pipeline)
+inv_lab_model <- lm(I(1/Lab) ~ Field, data = pipeline) # fit model
+
 plot(pipeline$Field, 1/pipeline$Lab, main = "Inverse Transformation of Lab vs Field",
      xlab = "Field", ylab = "1/Lab")
 abline(inv_lab_model, col = "blue")
-# Diagnostic plots for 1/Lab vs Field
-par(mfrow = c(1, 2))
-plot(inv_lab_model$fitted.values, inv_lab_model$residuals, main = "Residuals vs Fitted (1/Lab)")
-qqnorm(inv_lab_model$residuals, main = "QQ Plot of Residuals (1/Lab)")
-qqline(inv_lab_model$residuals)
+
 
 # Inverse of Field vs Lab
-inv_field_model <- lm(Lab ~ I(1/Field), data = pipeline)
+inv_field_model <- lm(Lab ~ I(1/Field), data = pipeline) # fit model
+
 plot(1/pipeline$Field, pipeline$Lab, main = "Inverse Transformation of Field vs Lab",
      xlab = "1/Field", ylab = "Lab")
 abline(inv_field_model, col = "blue")
-# Diagnostic plots for Lab vs 1/Field
-par(mfrow = c(1, 2))
-plot(inv_field_model$fitted.values, inv_field_model$residuals, main = "Residuals vs Fitted (1/Field)")
-qqnorm(inv_field_model$residuals, main = "QQ Plot of Residuals (1/Field)")
-qqline(inv_field_model$residuals)
 
-# Reset plotting layout
-par(mfrow = c(1, 1))
+
+par(mfrow = c(1,1))
+
+# Diagnostic plots for sqrt(Lab) vs Field
+plot(sqrt_lab_model, which = 1, main = "Residuals vs Fitted (sqrt(Lab))" )
+
+# Diagnostic plots for Lab vs sqrt(Field)
+
+plot(sqrt_field_model, which = 1, main = "Residuals vs Fitted (sqrt(Field))")
+
+# Diagnostic plots for log(Lab) vs Field
+
+plot(log_lab_model, which = 1,  main = "Residuals vs Fitted (log(Lab))")
+
+# Diagnostic plots for Lab vs log(Field)
+
+plot(log_field_model, which = 1, main = "Residuals vs Fitted (log(Field))")
+
+# Diagnostic plots for 1/Lab vs Field
+
+plot(inv_lab_model, which = 1, main = "Residuals vs Fitted (1/Lab)")
+
+# Diagnostic plots for Lab vs 1/Field
+
+plot(inv_field_model, which = 1,  main = "Residuals vs Fitted (1/Field)")
+
+
+
 
 ```
 
+
+
+
+```{r, warning=FALSE, message=FALSE, fig.height = 7, fig.width= 6}
+
+## function to automate 
+linear_const_var_trans <- function(Lab_trans, Field_trans, label) {
+  
+#  model with specified transformations
+  model <- lm(Lab_trans ~  Field_trans)
+ 
+# Plot data and model diagnostics
+  par(mfrow = c(2, 2))
+  plot(Field_trans, Lab_trans, main = paste("Scatter:", label),
+       xlab = "Transformed Field", ylab = "Transformed Lab")
+  abline(model, col = "red")
+ 
+  # Plot diagnostics
+  plot(model, which = 1:2, main = paste("Diagnostics:", label))
+  tidy_model <- tidy(model)
+  kable(tidy_model, caption = "Summary of Model", digits = 4)
+}
+
+# Different 3 transformations given 
+sqrt_lab <- sqrt(pipeline$Lab)
+sqrt_field <- sqrt(pipeline$Field)
+log_lab <- log(pipeline$Lab)
+log_field <- log(pipeline$Field)
+inv_lab <- 1 / pipeline$Lab
+inv_field <- 1 / pipeline$Field
+
+# Apply transformations and evaluate each
+linear_const_var_trans(pipeline$Lab,sqrt_field, "Lab vs Sqrt(Field)")
+linear_const_var_trans(log_lab,pipeline$Field, "Log Lab vs Field")
+linear_const_var_trans(sqrt_lab, sqrt_field, "Square Root Transformation")
+linear_const_var_trans(log_lab, log_field, "Log Transformation")
+linear_const_var_trans(inv_lab, inv_field, "Inverse Transformation")
+linear_const_var_trans(sqrt_lab, log_field, "Sqrt(Lab), Log(Field)")
+linear_const_var_trans(log_lab, sqrt_field, "Log(Lab), Sqrt(Field)")
+
+```
+
+
+Based on these diagnostics plots, the best transformation which shows a linear relationship, no clear pattern and with constant variance is the log transformation.
+
+The Log transformation on both lab and field is the most effective with smallest residual error and also the range scale on the plots is very small.
+
+Inverse transformation also had small range on the residual plot and is less variable.
+
+Square root transforms performs poorly.
